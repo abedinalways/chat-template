@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { useEffect } from "react";
+import { requestNotificationPermission } from "@/lib/notification";
+import { Provider } from "react-redux";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,12 +25,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  useEffect(() => {
+    if ('Notification' in window) {
+      requestNotificationPermission();
+    }
+  }, []);
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Provider store={store}>
+          {children}
+        </Provider>
+      </body>
     </html>
   );
 }
