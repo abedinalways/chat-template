@@ -1,165 +1,148 @@
-import React, { useState, useEffect, useRef } from 'react';
+// components/chat/ChatContainer.tsx
+// Main chat container that orchestrates the chat UI components.
+// Fully responsive design: adapts layout for mobile, tablet, and desktop.
+// Uses the ChatProvider context for state management and real-time updates.
 
-// import { useChat } from '@chat-template/core/hooks/useChat';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
-import { ChatInput } from './ChatInput';
+import { MessageInput } from './MessageInput';
 import { ConversationList } from './ConversationList';
-import { ChatConversation, ChatMessage, ChatUser } from '@/types/chat';
+import { useChat } from './ChatProvider';
+import { getCurrentUserId } from '@/lib/utils';
+import type { User } from '@/types/chat';
 
 interface ChatContainerProps {
-  currentUser: ChatUser;
-  conversations: ChatConversation[];
-  activeConversationId?: string;
-  onConversationSelect: (conversationId: string) => void;
-  onSendMessage: (message: string, attachments?: File[]) => Promise<void>;
-  isLoading?: boolean;
+  currentUser: User;
   className?: string;
-  config?: {
-    showHeader?: boolean;
-    showConversationList?: boolean;
-    enableAttachments?: boolean;
-    enableVoiceMessages?: boolean;
-    maxMessages?: number;
-  };
 }
 
-export function ChatContainer({
-  currentUser,
-  conversations,
-  activeConversationId,
-  onConversationSelect,
-  onSendMessage,
-  isLoading = false,
-  className = '',
-  config = {
-    showHeader: true,
-    showConversationList: true,
-    enableAttachments: true,
-    enableVoiceMessages: true,
-    maxMessages: 50,
-  },
-}: ChatContainerProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+/**
+ * Main chat container component with responsive design.
+ * 
+ * Mobile behavior:
+ * - Shows conversation list by default
+ * - When a conversation is selected, shows chat area with back button
+ * - Smooth transitions between views
+ * 
+ * Desktop behavior:
+ * - Shows both conversation list and chat area side by side
+ * 
+ * @example
+ * ```tsx
+ * <ChatContainer currentUser={user} />
+ * ```
+ */
+export function ChatContainer({ currentUser, className = '' }: ChatContainerProps) {
+  const {
+    conversations,
+    messages,
+    activeConversationId,
+    isTyping,
+    unreadCount,
+    isConnected,
+    selectConversation,
+    sendMessage,
+    setTyping,
+    joinRoom,
+    leaveRoom,
+    emitTyping,
+    markMessageRead,
+  } = useChat();
 
-  // ✅ Get active conversation
-  const activeConversation = conversations.find(
-    c => c.id === activeConversationId,
-  );
+  // Track mobile view state
+  const [isMobileView, setIsMobileView] = useState(false);
 
-  // ✅ Handle typing indicator
+  // Detect mobile screen size
   useEffect(() => {
-    if (!activeConversationId) return;
-
-    // Listen for typing events
-    const handleTyping = (data: { user_id: string; is_typing: boolean }) => {
-      if (data.user_id === currentUser.id) return;
-
-      setTypingUsers(prev => {
-        if (data.is_typing) {
-          return [...new Set([...prev, data.user_id])];
-        } else {
-          return prev.filter(id => id !== data.user_id);
-        }
-      });
+    const checkMobile = () => {
+      setIsMobileView(window.innerWidth < 768); // md breakpoint
     };
 
-    // Cleanup
-    return () => {
-      setTypingUsers([]);
-    };
-  }, [activeConversationId, currentUser.id]);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // ✅ Get conversation name
-  const getConversationName = (conversation: ChatConversation): string => {
-    if (conversation.creator_id === currentUser.id) {
-      return conversation.participant.name;
-    }
-    return conversation.creator.name;
+  // Compute mobile view directly from state (no useEffect needed)
+  const mobileView = isMobileView ? (activeConversationId ? 'chat' : 'list') : 'list';
+
+  // Get the active conversation
+  const activeConversation = conversations.find((c) => c.id === activeConversationId);
+  
+  // Get the other user in the active conversation
+  const otherUser = activeConversation?.participants.find((p) => p.id !== currentUser.id);
+
+  // Handle conversation selection
+  const handleConversationSelect = (id: string) => {
+    selectConversation(id);
   };
 
-  // ✅ Get conversation avatar
-  const getConversationAvatar = (conversation: ChatConversation): string => {
-    if (conversation.creator_id === currentUser.id) {
-      return conversation.participant.avatar || '';
-    }
-    return conversation.creator.avatar || '';
+  // Handle back button (mobile) - deselect conversation
+  const handleBack = () => {
+    selectConversation('');
   };
 
-  // ✅ Render empty state
-  if (!activeConversationId && config.showConversationList) {
-    return (
-      <div className="flex h-full bg-gray-50">
-        <div className="w-80 border-r border-gray-200">
-          <ConversationList
-            conversations={conversations}
-            activeId={activeConversationId}
-            currentUserId={currentUser.id}
-            onSelect={onConversationSelect}
-          />
-        </div>
-        <div className="flex-1 flex items-center justify-center text-gray-400">
-          <div className="text-center">
-            <p className="text-2xl mb-2">💬</p>
-            <p className="text-lg">Select a conversation</p>
-            <p className="text-sm">Choose a conversation to start messaging</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Determine what to show
+  const showConversationList = !isMobileView || mobileView === 'list';
+  const showChatArea = !isMobileView || mobileView === 'chat';
 
   return (
-    <div className={`flex h-full bg-white rounded-lg shadow-lg ${className}`}>
-      {/* ✅ Conversation List */}
-      {config.showConversationList && (
-        <div className="w-80 border-r border-gray-200 flex-shrink-0">
-          <ConversationList
-            conversations={conversations}
-            activeId={activeConversationId}
-            currentUserId={currentUser.id}
-            onSelect={onConversationSelect}
-          />
+    <div className={`flex h-full bg-white overflow-hidden ${className}`}>
+      {/* Conversation List Sidebar */}
+      {/* Mobile: Show as full screen overlay when active */}
+      {/* Desktop: Show as fixed sidebar */}
+      {showConversationList && (
+        <div
+          className={`
+            ${isMobileView ? 'absolute inset-0 z-20 bg-white' : 'w-80 border-r border-gray-200 flex-shrink-0'}
+          `}
+        >
+          <ConversationList />
         </div>
       )}
 
-      {/* ✅ Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* ✅ Header */}
-        {config.showHeader && activeConversation && (
-          <ChatHeader
-            name={getConversationName(activeConversation)}
-            avatar={getConversationAvatar(activeConversation)}
-            isOnline={true}
-            typingUsers={typingUsers}
-            onBack={() => {
-              if (config.showConversationList) {
-                onConversationSelect('');
-              }
-            }}
-          />
-        )}
+      {/* Chat Area */}
+      {showChatArea && (
+        <div className="flex-1 flex flex-col min-w-0 bg-white">
+          {activeConversation && otherUser ? (
+            <>
+              {/* Chat Header */}
+              <ChatHeader
+                name={otherUser.name}
+                avatar={otherUser.avatar}
+                isOnline={otherUser.isOnline}
+                typingUsers={isTyping ? [otherUser.id] : []}
+                onBack={isMobileView ? handleBack : undefined}
+              />
 
-        {/* ✅ Messages */}
-        <ChatMessages
-          messages={messages}
-          currentUserId={currentUser.id}
-          isLoading={isLoading}
-          maxMessages={config.maxMessages}
-        />
+              {/* Messages */}
+              <ChatMessages
+                messages={messages}
+                currentUserId={currentUser.id}
+                otherUser={otherUser}
+              />
 
-        {/* ✅ Input */}
-        <ChatInput
-          onSend={onSendMessage}
-          isTyping={isTyping}
-          setIsTyping={setIsTyping}
-          enableAttachments={config.enableAttachments}
-          enableVoiceMessages={config.enableVoiceMessages}
-          disabled={!activeConversationId}
-        />
-      </div>
+              {/* Message Input */}
+              <MessageInput />
+            </>
+          ) : (
+            /* Empty State */
+            <div className="flex-1 flex items-center justify-center text-gray-400 p-4">
+              <div className="text-center">
+                <p className="text-6xl mb-4">💬</p>
+                <p className="text-xl font-medium mb-2 text-gray-700">Welcome to Chat</p>
+                <p className="text-sm text-gray-500">Select a conversation to start messaging</p>
+                {!isConnected && (
+                  <p className="text-xs text-red-500 mt-4">Connecting to server...</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

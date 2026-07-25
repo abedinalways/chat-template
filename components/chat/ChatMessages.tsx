@@ -4,6 +4,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 
 import { Loader } from '@/components/ui/Loader';
+import { formatDate } from '@/lib/utils';
 import type { Message, User } from '@/types/chat';
 import { MessageBubble } from './MessageBubble';
 
@@ -62,13 +63,7 @@ export function ChatMessages({
     const groups: Record<string, Message[]> = {};
 
     messages.forEach((msg) => {
-      const date = new Date(msg.createdAt);
-      const key = date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      const key = formatDate(msg.createdAt);
 
       if (!groups[key]) {
         groups[key] = [];

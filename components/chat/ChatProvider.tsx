@@ -18,13 +18,8 @@ import {
   resetUnread,
 } from '@/redux/api/chat/chatSlice';
 import { useChatSocket } from '@/hooks/useChatSocket';
+import { getCurrentUserId } from '@/lib/utils';
 import type { Conversation, Message } from '@/types/chat';
-
-/** Safely read the current user's ID from localStorage (SSR-safe). */
-function getCurrentUserId(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('userId');
-}
 
 interface ChatContextType {
   conversations: Conversation[];

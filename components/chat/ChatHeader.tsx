@@ -3,6 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { formatTime } from '@/lib/utils';
 import type { User } from '@/types/chat';
 
 interface ChatHeaderProps {

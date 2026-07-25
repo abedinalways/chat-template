@@ -16,14 +16,9 @@ import { SocketService } from '@/lib/socket';
 import { chatApi } from '@/redux/api/chat/chatApi';
 import { incrementUnread, addNotification } from '@/redux/api/chat/chatSlice';
 import { useNotification } from './useNotification';
+import { getCurrentUserId } from '@/lib/utils';
 import type { AppDispatch } from '@/redux/store';
 import type { Message, Notification as ChatNotification } from '@/types/chat';
-
-/** Safely read the current user's ID from localStorage (SSR-safe). */
-function getCurrentUserId(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('userId');
-}
 
 export function useChatSocket() {
   const [isConnected, setIsConnected] = useState(false);
@@ -112,9 +107,11 @@ export function useChatSocket() {
   const joinRoom = useCallback((conversationId: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
+    
     const socketService = SocketService.getInstance({
       url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
     });
+    
     socketService.emit('joinRoom', { conversationId, userId });
   }, []);
 
@@ -122,9 +119,11 @@ export function useChatSocket() {
   const leaveRoom = useCallback((conversationId: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
+    
     const socketService = SocketService.getInstance({
       url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
     });
+    
     socketService.emit('leaveRoom', { conversationId, userId });
   }, []);
 
@@ -132,9 +131,11 @@ export function useChatSocket() {
   const emitTyping = useCallback((conversationId: string, isTyping: boolean) => {
     const userId = getCurrentUserId();
     if (!userId) return;
+    
     const socketService = SocketService.getInstance({
       url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
     });
+    
     socketService.emit('typing', { conversationId, userId, isTyping });
   }, []);
 
@@ -142,9 +143,11 @@ export function useChatSocket() {
   const markMessageRead = useCallback((messageId: string, conversationId: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
+    
     const socketService = SocketService.getInstance({
       url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
     });
+    
     socketService.emit('markRead', { messageId, conversationId });
   }, []);
 

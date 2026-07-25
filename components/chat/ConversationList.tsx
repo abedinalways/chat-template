@@ -7,12 +7,7 @@ import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Bell } from 'lucide-react';
 import { useChat } from './ChatProvider';
-
-/** Safely read the current user's ID from localStorage (SSR-safe). */
-function getCurrentUserId(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('userId');
-}
+import { getCurrentUserId, formatTime } from '@/lib/utils';
 
 export function ConversationList() {
   const {
@@ -104,10 +99,7 @@ export function ConversationList() {
                     </p>
                     {conv.lastMessage && (
                       <span className="text-xs text-gray-400 flex-shrink-0">
-                        {new Date(conv.lastMessage.createdAt).toLocaleTimeString(
-                          [],
-                          { hour: '2-digit', minute: '2-digit' },
-                        )}
+                        {formatTime(conv.lastMessage.createdAt)}
                       </span>
                     )}
                   </div>

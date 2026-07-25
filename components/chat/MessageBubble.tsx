@@ -3,6 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { formatTime } from '@/lib/utils';
 import type { Message, User } from '@/types/chat';
 
 interface MessageBubbleProps {
@@ -27,10 +28,7 @@ export function MessageBubble({
   currentUser,
   otherUser,
 }: MessageBubbleProps) {
-  const time = new Date(message.createdAt).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const time = formatTime(message.createdAt);
 
   return (
     <div className={`flex mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
