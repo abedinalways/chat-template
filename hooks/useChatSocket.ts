@@ -10,7 +10,7 @@
 // - Emits userId alongside every socket event so the server can identify
 //   the sender.
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { SocketService } from '@/lib/socket';
 import { chatApi } from '@/redux/api/chat/chatApi';
@@ -24,6 +24,8 @@ export function useChatSocket() {
   const [isConnected, setIsConnected] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const { sendNotification } = useNotification();
+  // Store socket instance in ref to avoid repeated getInstance calls
+  const socketServiceRef = useRef<SocketService | null>(null);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -31,18 +33,17 @@ export function useChatSocket() {
 
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
-    const socketService = SocketService.getInstance({
+    socketServiceRef.current = SocketService.getInstance({
       url: socketUrl,
       token,
     });
-
-    socketService.connect();
+    socketServiceRef.current.connect();
 
     // Subscribe to connection state changes
-    const unsubscribeConnection = socketService.onConnectionChange(setIsConnected);
+    const unsubscribeConnection = socketServiceRef.current.onConnectionChange(setIsConnected);
 
     // Listen for new messages from the server
-    const unsubscribeNewMessage = socketService.on('newMessage', (message: Message) => {
+    const unsubscribeNewMessage = socketServiceRef.current.on('newMessage', (message: Message) => {
       const meId = getCurrentUserId();
       const isMe = message.senderId === meId;
 
@@ -68,7 +69,7 @@ export function useChatSocket() {
           id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type: 'message',
           title: message.senderId,
-          body: message.text || '📎 Attachment',
+          body: message.text || 'Attachment',
           timestamp: new Date().toISOString(),
           isRead: false,
           conversationId: message.conversationId,
@@ -82,17 +83,22 @@ export function useChatSocket() {
     });
 
     // Listen for typing indicators
-    const unsubscribeTyping = socketService.on('typing', ({ conversationId, userId, isTyping }) => {
+    const unsubscribeTyping = socketServiceRef.current.on('typing', ({ conversationId, userId, isTyping }) => {
       const meId = getCurrentUserId();
       if (userId === meId) return; // Ignore our own typing events
       console.log(`[useChatSocket] User ${userId} is ${isTyping ? 'typing' : 'stopped typing'} in ${conversationId}`);
     });
 
     // Listen for message read receipts
-    const unsubscribeMessageRead = socketService.on('messageRead', ({ messageId, userId }) => {
+    const unsubscribeMessageRead = socketServiceRef.current.on('messageRead', ({ messageId, userId }) => {
       const meId = getCurrentUserId();
       if (userId === meId) return;
       console.log(`[useChatSocket] Message ${messageId} read by ${userId}`);
+    });
+
+    // Listen for user status updates
+    const unsubscribeUserStatus = socketServiceRef.current.on('userStatus', ({ userId, isOnline }) => {
+      console.log(`[useChatSocket] User ${userId} is ${isOnline ? 'online' : 'offline'}`);
     });
 
     return () => {
@@ -100,56 +106,54 @@ export function useChatSocket() {
       unsubscribeNewMessage();
       unsubscribeTyping();
       unsubscribeMessageRead();
+      unsubscribeUserStatus();
     };
   }, [dispatch, sendNotification]);
+
+  // Get socket instance (memoized reference)
+  const getSocketService = useCallback(() => {
+    if (!socketServiceRef.current) {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+      socketServiceRef.current = SocketService.getInstance({
+        url: socketUrl,
+        token: token || undefined,
+      });
+    }
+    return socketServiceRef.current;
+  }, []);
 
   // Join a conversation room
   const joinRoom = useCallback((conversationId: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
-    
-    const socketService = SocketService.getInstance({
-      url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
-    });
-    
-    socketService.emit('joinRoom', { conversationId, userId });
-  }, []);
+
+    getSocketService().emit('joinRoom', { conversationId, userId });
+  }, [getSocketService]);
 
   // Leave a conversation room
   const leaveRoom = useCallback((conversationId: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
-    
-    const socketService = SocketService.getInstance({
-      url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
-    });
-    
-    socketService.emit('leaveRoom', { conversationId, userId });
-  }, []);
+
+    getSocketService().emit('leaveRoom', { conversationId, userId });
+  }, [getSocketService]);
 
   // Emit typing indicator
   const emitTyping = useCallback((conversationId: string, isTyping: boolean) => {
     const userId = getCurrentUserId();
     if (!userId) return;
-    
-    const socketService = SocketService.getInstance({
-      url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
-    });
-    
-    socketService.emit('typing', { conversationId, userId, isTyping });
-  }, []);
+
+    getSocketService().emit('typing', { conversationId, userId, isTyping });
+  }, [getSocketService]);
 
   // Mark a message as read
   const markMessageRead = useCallback((messageId: string, conversationId: string) => {
     const userId = getCurrentUserId();
     if (!userId) return;
-    
-    const socketService = SocketService.getInstance({
-      url: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000',
-    });
-    
-    socketService.emit('markRead', { messageId, conversationId });
-  }, []);
+
+    getSocketService().emit('markRead', { messageId, conversationId });
+  }, [getSocketService]);
 
   return {
     joinRoom,

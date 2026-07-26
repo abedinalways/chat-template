@@ -75,6 +75,7 @@ export interface SocketEvents {
   connect: () => void;
   disconnect: (reason: string) => void;
   connect_error: (error: Error) => void;
+  userStatus: (data: { userId: string; isOnline: boolean }) => void;
 }
 
 /** Socket events emitted to the server */
