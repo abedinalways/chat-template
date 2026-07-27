@@ -7,7 +7,8 @@ import type { Notification } from '@/types/chat';
 
 interface ChatState {
   activeConversationId: string | null;
-  isTyping: boolean;
+  // Per-conversation typing: Record<conversationId, Set of userIds who are typing>
+  typingUsers: Record<string, string[]>;
   unreadCount: number; // Total unread messages across all conversations
   unreadConversations: Record<string, number>; // Per-conversation unread counts
   notifications: Notification[]; // In-app notification list
@@ -15,7 +16,7 @@ interface ChatState {
 
 const initialState: ChatState = {
   activeConversationId: null,
-  isTyping: false,
+  typingUsers: {},
   unreadCount: 0,
   unreadConversations: {},
   notifications: [],
@@ -25,15 +26,30 @@ const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    // Set the active conversation and reset its unread count
-    setActiveConversation: (state, action: PayloadAction<string>) => {
+    // Set the active conversation (pass null to clear) and reset its unread count
+    setActiveConversation: (state, action: PayloadAction<string | null>) => {
       state.activeConversationId = action.payload;
-      state.unreadConversations[action.payload] = 0;
+      if (action.payload) {
+        state.unreadConversations[action.payload] = 0;
+      }
       state.unreadCount = sumUnread(state.unreadConversations);
     },
 
-    setTyping: (state, action: PayloadAction<boolean>) => {
-      state.isTyping = action.payload;
+    // Set a user's typing state for a specific conversation
+    setUserTyping: (
+      state,
+      action: PayloadAction<{ conversationId: string; userId: string; isTyping: boolean }>,
+    ) => {
+      const { conversationId, userId, isTyping } = action.payload;
+      const currentTypers = state.typingUsers[conversationId] || [];
+
+      if (isTyping) {
+        if (!currentTypers.includes(userId)) {
+          state.typingUsers[conversationId] = [...currentTypers, userId];
+        }
+      } else {
+        state.typingUsers[conversationId] = currentTypers.filter((id) => id !== userId);
+      }
     },
 
     // Increment unread count for a conversation (if it's not the active one)
@@ -90,7 +106,7 @@ function sumUnread(record: Record<string, number>): number {
 
 export const {
   setActiveConversation,
-  setTyping,
+  setUserTyping,
   incrementUnread,
   resetUnread,
   addNotification,

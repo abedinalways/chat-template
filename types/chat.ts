@@ -22,12 +22,13 @@ export interface Attachment {
 /** A single chat message */
 export interface Message {
   id: string;
-  text: string;
+  content: string;
   senderId: string;
-  receiverId: string;
+  receiverId: string | null;
   conversationId: string;
   createdAt: string;
-  status: 'sending' | 'sent' | 'delivered' | 'read';
+  status: "sending" | "sent" | "delivered" | "read";
+  type?: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
   attachments?: Attachment[];
   isRead?: boolean;
 }
@@ -42,7 +43,7 @@ export interface Conversation {
 }
 
 /** Notification types for in-app notifications */
-export type NotificationType = 'message' | 'mention' | 'system';
+export type NotificationType = "message" | "mention" | "system";
 
 /** An in-app notification */
 export interface Notification {
@@ -70,8 +71,16 @@ export interface ChatConfig {
 /** Socket events emitted from the server */
 export interface SocketEvents {
   newMessage: (message: Message) => void;
-  typing: (data: { conversationId: string; userId: string; isTyping: boolean }) => void;
-  messageRead: (data: { messageId: string; userId: string }) => void;
+  typing: (data: {
+    conversationId: string;
+    userId: string;
+    isTyping: boolean;
+  }) => void;
+  messageRead: (data: {
+    messageId: string;
+    userId: string;
+    conversationId: string;
+  }) => void;
   connect: () => void;
   disconnect: (reason: string) => void;
   connect_error: (error: Error) => void;
@@ -82,7 +91,16 @@ export interface SocketEvents {
 export interface SocketEmitEvents {
   joinRoom: (data: { conversationId: string; userId: string }) => void;
   leaveRoom: (data: { conversationId: string; userId: string }) => void;
-  typing: (data: { conversationId: string; userId: string; isTyping: boolean }) => void;
-  sendMessage: (message: Omit<Message, 'id' | 'status' | 'createdAt'>) => void;
+  typing: (data: {
+    conversationId: string;
+    userId: string;
+    isTyping: boolean;
+  }) => void;
+  sendMessage: (data: {
+    conversationId: string;
+    content: string;
+    type?: "TEXT" | "IMAGE" | "FILE" | "SYSTEM";
+    receiverId?: string;
+  }) => void;
   markRead: (data: { messageId: string; conversationId: string }) => void;
 }

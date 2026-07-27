@@ -3,16 +3,16 @@
 // Fully responsive design: adapts layout for mobile, tablet, and desktop.
 // Uses the ChatProvider context for state management and real-time updates.
 
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { ChatHeader } from './ChatHeader';
-import { ChatMessages } from './ChatMessages';
-import { MessageInput } from './MessageInput';
-import { ConversationList } from './ConversationList';
-import { useChat } from './ChatProvider';
-import { getCurrentUserId } from '@/lib/utils';
-import type { User } from '@/types/chat';
+import React, { useState, useEffect, useMemo } from "react";
+import { ChatHeader } from "./ChatHeader";
+import { ChatMessages } from "./ChatMessages";
+import { MessageInput } from "./MessageInput";
+import { ConversationList } from "./ConversationList";
+import { useChat } from "./ChatProvider";
+import { getCurrentUserId } from "@/lib/utils";
+import type { User, Conversation } from "@/types/chat";
 
 interface ChatContainerProps {
   currentUser: User;
@@ -21,26 +21,29 @@ interface ChatContainerProps {
 
 /**
  * Main chat container component with responsive design.
- * 
+ *
  * Mobile behavior:
  * - Shows conversation list by default
  * - When a conversation is selected, shows chat area with back button
  * - Smooth transitions between views
- * 
+ *
  * Desktop behavior:
  * - Shows both conversation list and chat area side by side
- * 
+ *
  * @example
  * ```tsx
  * <ChatContainer currentUser={user} />
  * ```
  */
-export function ChatContainer({ currentUser, className = '' }: ChatContainerProps) {
+export function ChatContainer({
+  currentUser,
+  className = "",
+}: ChatContainerProps) {
   const {
     conversations,
     messages,
     activeConversationId,
-    isTyping,
+    typingUsers,
     unreadCount,
     isConnected,
     selectConversation,
@@ -62,18 +65,37 @@ export function ChatContainer({ currentUser, className = '' }: ChatContainerProp
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Compute mobile view directly from state (no useEffect needed)
-  const mobileView = isMobileView ? (activeConversationId ? 'chat' : 'list') : 'list';
+  const mobileView = isMobileView
+    ? activeConversationId
+      ? "chat"
+      : "list"
+    : "list";
 
   // Get the active conversation
-  const activeConversation = conversations.find((c) => c.id === activeConversationId);
-  
-  // Get the other user in the active conversation
-  const otherUser = activeConversation?.participants.find((p) => p.id !== currentUser.id);
+  const activeConversation = conversations.find(
+    (c) => c.id === activeConversationId,
+  );
+
+  // Build participant map for quick name lookup (useful for group chat typing display)
+  const participantMap = useMemo(() => {
+    const map: Record<string, User> = {};
+    activeConversation?.participants.forEach((p) => {
+      map[p.id] = p;
+    });
+    return map;
+  }, [activeConversation]);
+
+  // Get the other user in a 1-on-1 conversation
+  // For group chats, this is null and the header shows the conversation instead
+  const otherUser =
+    activeConversation?.participants.length === 2
+      ? activeConversation.participants.find((p) => p.id !== currentUser.id)
+      : undefined;
 
   // Handle conversation selection
   const handleConversationSelect = (id: string) => {
@@ -82,12 +104,12 @@ export function ChatContainer({ currentUser, className = '' }: ChatContainerProp
 
   // Handle back button (mobile) - deselect conversation
   const handleBack = () => {
-    selectConversation('');
+    selectConversation(null);
   };
 
   // Determine what to show
-  const showConversationList = !isMobileView || mobileView === 'list';
-  const showChatArea = !isMobileView || mobileView === 'chat';
+  const showConversationList = !isMobileView || mobileView === "list";
+  const showChatArea = !isMobileView || mobileView === "chat";
 
   return (
     <div className={`flex h-full bg-white overflow-hidden ${className}`}>
@@ -97,7 +119,7 @@ export function ChatContainer({ currentUser, className = '' }: ChatContainerProp
       {showConversationList && (
         <div
           className={`
-            ${isMobileView ? 'absolute inset-0 z-20 bg-white' : 'w-80 border-r border-gray-200 flex-shrink-0'}
+            ${isMobileView ? "absolute inset-0 z-20 bg-white" : "w-80 border-r border-gray-200 flex-shrink-0"}
           `}
         >
           <ConversationList />
@@ -107,14 +129,22 @@ export function ChatContainer({ currentUser, className = '' }: ChatContainerProp
       {/* Chat Area */}
       {showChatArea && (
         <div className="flex-1 flex flex-col min-w-0 bg-white">
-          {activeConversation && otherUser ? (
+          {activeConversation ? (
             <>
               {/* Chat Header */}
               <ChatHeader
-                name={otherUser.name}
-                avatar={otherUser.avatar}
-                isOnline={otherUser.isOnline}
-                typingUsers={isTyping ? [otherUser.id] : []}
+                name={
+                  otherUser?.name ||
+                  activeConversation.participants.map((p) => p.name).join(", ")
+                }
+                avatar={otherUser?.avatar}
+                isOnline={otherUser?.isOnline}
+                typingUsers={
+                  activeConversationId
+                    ? typingUsers[activeConversationId] || []
+                    : []
+                }
+                participantMap={participantMap}
                 onBack={isMobileView ? handleBack : undefined}
               />
 
@@ -133,10 +163,16 @@ export function ChatContainer({ currentUser, className = '' }: ChatContainerProp
             <div className="flex-1 flex items-center justify-center text-gray-400 p-4">
               <div className="text-center">
                 <p className="text-6xl mb-4">💬</p>
-                <p className="text-xl font-medium mb-2 text-gray-700">Welcome to Chat</p>
-                <p className="text-sm text-gray-500">Select a conversation to start messaging</p>
+                <p className="text-xl font-medium mb-2 text-gray-700">
+                  Welcome to Chat
+                </p>
+                <p className="text-sm text-gray-500">
+                  Select a conversation to start messaging
+                </p>
                 {!isConnected && (
-                  <p className="text-xs text-red-500 mt-4">Connecting to server...</p>
+                  <p className="text-xs text-red-500 mt-4">
+                    Connecting to server...
+                  </p>
                 )}
               </div>
             </div>

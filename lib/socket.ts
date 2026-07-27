@@ -3,8 +3,8 @@
 // Provides a clean API for emitting events and listening to server events.
 // SSR-safe: the socket is only created on the client side.
 
-import { io, Socket } from 'socket.io-client';
-import type { SocketEmitEvents, SocketEvents } from '@/types/chat';
+import { io, Socket } from "socket.io-client";
+import type { SocketEmitEvents, SocketEvents } from "@/types/chat";
 
 export interface SocketServiceConfig {
   url: string;
@@ -12,7 +12,10 @@ export interface SocketServiceConfig {
   autoConnect?: boolean;
 }
 
-type AnySocket = Socket<Record<string, (...args: unknown[]) => void>, Record<string, (...args: unknown[]) => void>>;
+type AnySocket = Socket<
+  Record<string, (...args: unknown[]) => void>,
+  Record<string, (...args: unknown[]) => void>
+>;
 
 /**
  * Singleton socket service.
@@ -41,8 +44,11 @@ class SocketService {
   static getInstance(config: SocketServiceConfig): SocketService {
     if (!SocketService.instance) {
       SocketService.instance = new SocketService(config);
-    } else if (SocketService.instance.config.url !== config.url) {
-      // URL changed — disconnect old socket and update config
+    } else if (
+      SocketService.instance.config.url !== config.url ||
+      SocketService.instance.config.token !== config.token
+    ) {
+      // URL or token changed — disconnect old socket and update config
       SocketService.instance.disconnect();
       SocketService.instance.config = config;
     }
@@ -61,13 +67,15 @@ class SocketService {
 
   /**
    * Create the underlying socket.io client and wire up internal listeners.
+   * Connects to the /chat namespace on the server.
    */
   private createSocket(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const { url, token } = this.config;
+    const namespaceUrl = `${url}/chat`;
 
-    this.socket = io(url, {
+    this.socket = io(namespaceUrl, {
       auth: token ? { token } : undefined,
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -75,22 +83,23 @@ class SocketService {
       reconnectionDelayMax: 5000,
       timeout: 10000,
       autoConnect: this.config.autoConnect ?? true,
+      transports: ["websocket", "polling"],
     }) as AnySocket;
 
-    this.socket.on('connect', () => {
+    this.socket.on("connect", () => {
       this.notifyConnectionListeners(true);
     });
 
-    this.socket.on('disconnect', (reason: string) => {
+    this.socket.on("disconnect", (reason: string) => {
       this.notifyConnectionListeners(false);
       // Attempt to reconnect if the server disconnected us
-      if (reason === 'io server disconnect') {
+      if (reason === "io server disconnect") {
         this.socket?.connect();
       }
     });
 
-    this.socket.on('connect_error', (error: Error) => {
-      console.error('[SocketService] Connection error:', error.message);
+    this.socket.on("connect_error", (error: Error) => {
+      console.error("[SocketService] Connection error:", error.message);
       this.notifyConnectionListeners(false);
     });
   }
@@ -164,7 +173,9 @@ class SocketService {
     ...args: Parameters<SocketEmitEvents[K]>
   ): void {
     if (!this.socket || !this.socket.connected) {
-      console.warn(`[SocketService] Cannot emit "${event}" — socket not connected`);
+      console.warn(
+        `[SocketService] Cannot emit "${event}" — socket not connected`,
+      );
       return;
     }
     this.socket.emit(event as string, ...args);

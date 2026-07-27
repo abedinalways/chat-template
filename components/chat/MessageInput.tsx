@@ -10,7 +10,7 @@ import { useChat } from './ChatProvider';
 import { useDebounce } from '@/hooks/useDebounce';
 
 export function MessageInput() {
-  const { sendMessage, activeConversationId, emitTyping } = useChat();
+  const { sendMessage, activeConversationId, emitTyping, setTyping } = useChat();
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -26,14 +26,16 @@ export function MessageInput() {
 
     const isTyping = debouncedText.length > 0 || attachments.length > 0;
     emitTyping(activeConversationId, isTyping);
+    setTyping(activeConversationId, isTyping);
 
     // Cleanup: emit stopped typing when component unmounts or conversation changes
     return () => {
       if (activeConversationId) {
         emitTyping(activeConversationId, false);
+        setTyping(activeConversationId, false);
       }
     };
-  }, [debouncedText, attachments.length, activeConversationId, emitTyping]);
+  }, [debouncedText, attachments.length, activeConversationId, emitTyping, setTyping]);
 
   // Auto-resize textarea based on content
   useEffect(() => {

@@ -62,7 +62,7 @@ export function MessageBubble({
         }`}
       >
         {/* Message text */}
-        {message.text && <p className="text-sm break-words">{message.text}</p>}
+        {message.content && <p className="text-sm break-words">{message.content}</p>}
 
         {/* Attachments */}
         {message.attachments && message.attachments.length > 0 && (

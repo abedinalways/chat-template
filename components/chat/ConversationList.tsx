@@ -106,7 +106,7 @@ export function ConversationList() {
 
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500 truncate">
-                      {conv.lastMessage?.text || 'No messages yet'}
+                      {conv.lastMessage?.content || 'No messages yet'}
                     </p>
                     {unread > 0 && (
                       <span className="bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">

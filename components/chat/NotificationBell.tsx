@@ -18,11 +18,12 @@ export function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
 
-  const { notifications, unreadCount } = useSelector(
+  const { notifications } = useSelector(
     (state: RootState) => state.chat,
   );
 
   const unreadNotifications = notifications.filter((n) => !n.isRead);
+  const unreadNotificationCount = unreadNotifications.length;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -80,9 +81,9 @@ export function NotificationBell() {
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5 text-gray-600" />
-        {unreadCount > 0 && (
+        {unreadNotificationCount > 0 && (
           <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
           </span>
         )}
       </button>

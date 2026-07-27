@@ -3,7 +3,6 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { formatTime } from '@/lib/utils';
 import type { User } from '@/types/chat';
 
 interface ChatHeaderProps {
@@ -12,6 +11,7 @@ interface ChatHeaderProps {
   isOnline?: boolean;
   typingUsers?: string[];
   onBack?: () => void;
+  participantMap?: Record<string, User>;
 }
 
 export function ChatHeader({
@@ -20,11 +20,18 @@ export function ChatHeader({
   isOnline = false,
   typingUsers = [],
   onBack,
+  participantMap = {},
 }: ChatHeaderProps) {
-  const displayText =
-    typingUsers.length > 0
-      ? `${typingUsers.length} person${typingUsers.length > 1 ? 's' : ''} typing...`
-      : name;
+  const typingNames = typingUsers
+    .map((id) => participantMap[id]?.name || 'Someone')
+    .join(', ');
+
+  const typingText =
+    typingUsers.length === 1
+      ? `${typingNames} is typing...`
+      : typingUsers.length > 1
+        ? `${typingNames} are typing...`
+        : '';
 
   return (
     <div className="flex items-center gap-3 p-4 border-b border-gray-200 bg-white">
@@ -32,8 +39,7 @@ export function ChatHeader({
         <button
           onClick={onBack}
           className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="Back"
-        >
+          aria-label="Back">
           ←
         </button>
       )}
@@ -61,7 +67,7 @@ export function ChatHeader({
         <p className="font-medium truncate">{name}</p>
         {typingUsers.length > 0 && (
           <p className="text-xs text-gray-500 animate-pulse">
-            {displayText}
+            {typingText}
           </p>
         )}
       </div>

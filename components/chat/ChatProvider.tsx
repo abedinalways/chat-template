@@ -2,36 +2,42 @@
 // Context provider that ties together Redux, RTK Query, and Socket.io.
 // Provides chat state and actions to all child components via React Context.
 
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import type { RootState, AppDispatch } from '@/redux/store';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState, AppDispatch } from "@/redux/store";
 import {
   useGetConversationsQuery,
   useGetMessagesQuery,
   useSendMessageMutation,
-} from '@/redux/api/chat/chatApi';
+} from "@/redux/api/chat/chatApi";
 import {
   setActiveConversation,
-  setTyping,
+  setUserTyping,
   resetUnread,
-} from '@/redux/api/chat/chatSlice';
-import { useChatSocket } from '@/hooks/useChatSocket';
-import { getCurrentUserId } from '@/lib/utils';
-import type { Conversation, Message } from '@/types/chat';
+} from "@/redux/api/chat/chatSlice";
+import { useChatSocket } from "@/hooks/useChatSocket";
+import { getCurrentUserId } from "@/lib/utils";
+import type { Conversation, Message } from "@/types/chat";
 
 interface ChatContextType {
   conversations: Conversation[];
   messages: Message[];
   activeConversationId: string | null;
-  isTyping: boolean;
+  typingUsers: Record<string, string[]>;
   unreadCount: number;
   unreadConversations: Record<string, number>;
   isConnected: boolean;
-  selectConversation: (id: string) => void;
+  selectConversation: (id: string | null) => void;
   sendMessage: (text: string) => Promise<void>;
-  setTyping: (value: boolean) => void;
+  setTyping: (conversationId: string, isTyping: boolean) => void;
   joinRoom: (conversationId: string) => void;
   leaveRoom: (conversationId: string) => void;
   emitTyping: (conversationId: string, isTyping: boolean) => void;
@@ -43,15 +49,19 @@ const ChatContext = createContext<ChatContextType | null>(null);
 export function useChat() {
   const context = useContext(ChatContext);
   if (!context) {
-    throw new Error('useChat must be used inside ChatProvider');
+    throw new Error("useChat must be used inside ChatProvider");
   }
   return context;
 }
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch<AppDispatch>();
-  const { activeConversationId, isTyping, unreadCount, unreadConversations } =
-    useSelector((state: RootState) => state.chat);
+  const {
+    activeConversationId,
+    typingUsers,
+    unreadCount,
+    unreadConversations,
+  } = useSelector((state: RootState) => state.chat);
 
   const { joinRoom, leaveRoom, emitTyping, markMessageRead, isConnected } =
     useChatSocket();
@@ -85,32 +95,62 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         leaveRoom(activeConversationId);
       }
     };
-  }, [activeConversationId, isConnected, joinRoom, leaveRoom, dispatch, unreadConversations]);
+  }, [
+    activeConversationId,
+    isConnected,
+    joinRoom,
+    leaveRoom,
+    dispatch,
+    unreadConversations,
+  ]);
 
   // Send a message via the REST API
   const sendMessage = useCallback(
     async (text: string) => {
       if (!activeConversationId || !text.trim()) return;
 
-      const conversation = conversations.find((c) => c.id === activeConversationId);
+      const conversation = conversations.find(
+        (c) => c.id === activeConversationId,
+      );
       if (!conversation) return;
 
       const meId = getCurrentUserId();
-      const receiverId = conversation.participants.find((p) => p.id !== meId)?.id;
-      if (!receiverId) return;
+      const otherParticipants = conversation.participants.filter(
+        (p) => p.id !== meId,
+      );
+      const receiverId =
+        otherParticipants.length === 1 ? otherParticipants[0].id : undefined;
 
       try {
         await sendMessageApi({
           conversationId: activeConversationId,
           receiverId,
-          text,
+          content: text.trim(),
+          type: "TEXT",
         }).unwrap();
-        dispatch(setTyping(false));
+        if (meId) {
+          dispatch(
+            setUserTyping({
+              conversationId: activeConversationId,
+              userId: meId,
+              isTyping: false,
+            }),
+          );
+        }
       } catch (error) {
-        console.error('[ChatProvider] Failed to send message:', error);
+        console.error("[ChatProvider] Failed to send message:", error);
       }
     },
     [activeConversationId, conversations, sendMessageApi, dispatch],
+  );
+
+  const setTyping = useCallback(
+    (conversationId: string, isTyping: boolean) => {
+      const meId = getCurrentUserId();
+      if (!meId) return;
+      dispatch(setUserTyping({ conversationId, userId: meId, isTyping }));
+    },
+    [dispatch],
   );
 
   const value = useMemo(
@@ -118,15 +158,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       conversations,
       messages,
       activeConversationId,
-      isTyping,
+      typingUsers,
       unreadCount,
       unreadConversations,
       isConnected,
-      selectConversation: (id: string) => {
+      selectConversation: (id: string | null) => {
         dispatch(setActiveConversation(id));
       },
       sendMessage,
-      setTyping: (value: boolean) => dispatch(setTyping(value)),
+      setTyping,
       joinRoom,
       leaveRoom,
       emitTyping,
@@ -136,11 +176,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       conversations,
       messages,
       activeConversationId,
-      isTyping,
+      typingUsers,
       unreadCount,
       unreadConversations,
       isConnected,
       sendMessage,
+      setTyping,
       joinRoom,
       leaveRoom,
       emitTyping,
