@@ -7,7 +7,8 @@ import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Bell } from 'lucide-react';
 import { useChat } from './ChatProvider';
-import { getCurrentUserId, formatTime } from '@/lib/utils';
+import { getCurrentUserId } from '@/lib/auth';
+import { formatTime } from '@/lib/utils';
 
 export function ConversationList() {
   const {

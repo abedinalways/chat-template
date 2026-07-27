@@ -5,11 +5,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { Message, Conversation } from "@/types/chat";
 
-// Helper to safely get the auth token from localStorage (SSR-safe)
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
-}
+import { getAuthToken } from "@/lib/auth";
 
 export const chatApi = createApi({
   reducerPath: "chatApi",

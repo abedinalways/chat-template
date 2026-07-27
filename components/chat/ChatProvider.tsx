@@ -22,9 +22,10 @@ import {
   setActiveConversation,
   setUserTyping,
   resetUnread,
+  selectUnreadCount,
 } from "@/redux/api/chat/chatSlice";
 import { useChatSocket } from "@/hooks/useChatSocket";
-import { getCurrentUserId } from "@/lib/utils";
+import { getCurrentUserId } from "@/lib/auth";
 import type { Conversation, Message } from "@/types/chat";
 
 interface ChatContextType {
@@ -59,9 +60,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const {
     activeConversationId,
     typingUsers,
-    unreadCount,
     unreadConversations,
   } = useSelector((state: RootState) => state.chat);
+
+  const unreadCount = selectUnreadCount({ chat: { ...useSelector((state: RootState) => state.chat) } });
 
   const { joinRoom, leaveRoom, emitTyping, markMessageRead, isConnected } =
     useChatSocket();

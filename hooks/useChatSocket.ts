@@ -20,9 +20,9 @@ import {
   addNotification,
 } from "@/redux/api/chat/chatSlice";
 import { useNotification } from "./useNotification";
-import { getCurrentUserId } from "@/lib/utils";
+import { getCurrentUserId, getAuthToken } from "@/lib/auth";
 import type { AppDispatch } from "@/redux/store";
-import type { Message, Notification as ChatNotification } from "@/types/chat";
+import type { Conversation, Message, Notification as ChatNotification } from "@/types/chat";
 
 export function useChatSocket() {
   const [isConnected, setIsConnected] = useState(false);
@@ -32,8 +32,7 @@ export function useChatSocket() {
   const socketServiceRef = useRef<SocketService | null>(null);
 
   useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token = getAuthToken();
     if (!token) return;
 
     const socketUrl =
@@ -75,7 +74,7 @@ export function useChatSocket() {
           chatApi.util.updateQueryData(
             "getConversations",
             undefined,
-            (draft: any[]) => {
+            (draft: Conversation[]) => {
               const convIndex = draft.findIndex(
                 (c) => c.id === message.conversationId,
               );
@@ -158,7 +157,7 @@ export function useChatSocket() {
           chatApi.util.updateQueryData(
             "getConversations",
             undefined,
-            (draft: any[]) => {
+            (draft: Conversation[]) => {
               for (let i = 0; i < draft.length; i++) {
                 const conv = draft[i];
                 for (let j = 0; j < conv.participants.length; j++) {
@@ -188,8 +187,7 @@ export function useChatSocket() {
   // Get socket instance (memoized reference)
   const getSocketService = useCallback(() => {
     if (!socketServiceRef.current) {
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const token = getAuthToken();
       const socketUrl =
         process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
       socketServiceRef.current = SocketService.getInstance({

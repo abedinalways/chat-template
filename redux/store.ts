@@ -22,3 +22,6 @@ export const store = configureStore({
 // Infer types from the store for use throughout the app
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// Selector type helper
+export type TypedSelector<T> = (state: RootState) => T;

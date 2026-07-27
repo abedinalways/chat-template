@@ -3,44 +3,6 @@
 // Centralizes common operations to avoid code duplication.
 
 /**
- * Safely retrieve the current user's ID from localStorage.
- * SSR-safe: returns null on the server side.
- * 
- * @returns The user ID string or null if not found/server-side
- * 
- * @example
- * ```typescript
- * const userId = getCurrentUserId();
- * if (userId) {
- *   // User is authenticated
- * }
- * ```
- */
-export function getCurrentUserId(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('userId');
-}
-
-/**
- * Safely retrieve the auth token from localStorage.
- * SSR-safe: returns null on the server side.
- * 
- * @returns The auth token string or null if not found/server-side
- * 
- * @example
- * ```typescript
- * const token = getAuthToken();
- * if (token) {
- *   // Use token for API requests
- * }
- * ```
- */
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
-}
-
-/**
  * Format a timestamp to a human-readable time string.
  * 
  * @param timestamp - ISO timestamp string or Date object
@@ -86,49 +48,17 @@ export function formatDate(timestamp: string | Date): string {
  * Generate a unique ID for messages, notifications, etc.
  * Uses timestamp + random string for uniqueness.
  * 
+ * @param prefix - Optional prefix for the ID
  * @returns A unique ID string
  * 
  * @example
  * ```typescript
- * const messageId = generateUniqueId();
+ * const messageId = generateUniqueId('msg');
  * // Output: "msg-1705312800000-a1b2c3"
  * ```
  */
 export function generateUniqueId(prefix = 'id'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/**
- * Debounce a function call to limit how often it executes.
- * 
- * @param func - The function to debounce
- * @param wait - Wait time in milliseconds
- * @returns Debounced function
- * 
- * @example
- * ```typescript
- * const debouncedSearch = debounce((query: string) => {
- *   console.log('Searching:', query);
- * }, 300);
- * 
- * debouncedSearch('hello'); // Will execute after 300ms
- * debouncedSearch('world'); // Will reset the timer
- * ```
- */
-export function debounce<T extends (...args: unknown[]) => void>(
-  func: T,
-  wait: number,
-): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout | null = null;
-
-  return (...args: Parameters<T>) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, wait);
-  };
 }
 
 /**
@@ -208,4 +138,37 @@ export function safeLocalStorageSet(key: string, value: unknown): void {
   } catch (error) {
     console.error(`[utils] Failed to set localStorage key "${key}":`, error);
   }
+}
+
+/**
+ * Debounce a function call to limit how often it executes.
+ * 
+ * @param func - The function to debounce
+ * @param wait - Wait time in milliseconds
+ * @returns Debounced function
+ * 
+ * @example
+ * ```typescript
+ * const debouncedSearch = debounce((query: string) => {
+ *   console.log('Searching:', query);
+ * }, 300);
+ * 
+ * debouncedSearch('hello'); // Will execute after 300ms
+ * debouncedSearch('world'); // Will reset the timer
+ * ```
+ */
+export function debounce<T extends (...args: unknown[]) => void>(
+  func: T,
+  wait: number,
+): (...args: Parameters<T>) => void {
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  return (...args: Parameters<T>) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      func(...args);
+    }, wait);
+  };
 }

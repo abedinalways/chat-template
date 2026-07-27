@@ -11,7 +11,7 @@ import { ChatMessages } from "./ChatMessages";
 import { MessageInput } from "./MessageInput";
 import { ConversationList } from "./ConversationList";
 import { useChat } from "./ChatProvider";
-import { getCurrentUserId } from "@/lib/utils";
+import { getCurrentUserId } from "@/lib/auth";
 import type { User, Conversation } from "@/types/chat";
 
 interface ChatContainerProps {
