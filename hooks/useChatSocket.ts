@@ -20,7 +20,7 @@ import {
   addNotification,
 } from "@/redux/api/chat/chatSlice";
 import { useNotification } from "./useNotification";
-import { getCurrentUserId, getAuthToken } from "@/lib/auth";
+import { getCurrentUserId, getAuthToken, isAuthenticated } from "@/lib/auth";
 import type { AppDispatch } from "@/redux/store";
 import type { Conversation, Message, Notification as ChatNotification } from "@/types/chat";
 
@@ -34,6 +34,10 @@ export function useChatSocket() {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
+
+    // Don't connect in demo mode - check if demo mode is enabled
+    const demoMode = localStorage.getItem('demoMode');
+    if (demoMode === 'true') return;
 
     const socketUrl =
       process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
