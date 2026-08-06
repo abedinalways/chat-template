@@ -119,7 +119,7 @@ export function ChatMessages({
         <div key={date}>
           {/* Date header */}
           <div className="flex justify-center my-4">
-            <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+            <span className="text-xs text-gray-400 bg-transparent px-3 py-1">
               {date}
             </span>
           </div>
