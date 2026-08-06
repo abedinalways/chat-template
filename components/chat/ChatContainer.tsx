@@ -112,14 +112,14 @@ export function ChatContainer({
   const showChatArea = !isMobileView || mobileView === "chat";
 
   return (
-    <div className={`flex h-full bg-white overflow-hidden ${className}`}>
+    <div className={`flex h-full bg-gray-50 overflow-hidden ${className}`}>
       {/* Conversation List Sidebar */}
       {/* Mobile: Show as full screen overlay when active */}
       {/* Desktop: Show as fixed sidebar */}
       {showConversationList && (
         <div
           className={`
-            ${isMobileView ? "absolute inset-0 z-20 bg-white" : "w-80 border-r border-gray-200 flex-shrink-0"}
+            ${isMobileView ? "absolute inset-0 z-20 bg-white" : "w-80 bg-white flex-shrink-0"}
           `}
         >
           <ConversationList />
@@ -128,7 +128,7 @@ export function ChatContainer({
 
       {/* Chat Area */}
       {showChatArea && (
-        <div className="flex-1 flex flex-col min-w-0 bg-white">
+        <div className="flex-1 flex flex-col min-w-0 bg-gray-50">
           {activeConversation ? (
             <>
               {/* Chat Header */}

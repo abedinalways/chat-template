@@ -31,27 +31,27 @@ export function ConversationList() {
   }, [conversations, searchTerm, meId]);
 
   return (
-    <div className="border-r border-gray-200 h-full overflow-y-auto bg-white">
+    <div className="h-full overflow-y-auto bg-white">
       <div className="p-4">
-        {/* Header with unread count */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Messages</h2>
-          {unreadCount > 0 && (
-            <div className="flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-full text-xs">
-              <Bell className="w-3 h-3" />
-              <span>{unreadCount}</span>
-            </div>
-          )}
+        {/* Header */}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Communicate with our APSU care team.</p>
         </div>
 
         {/* Search input */}
-        <input
-          type="text"
-          placeholder="Search conversations..."
-          className="w-full px-3 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="relative mb-4">
+          <input
+            type="text"
+            placeholder="Search messages"
+            className="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
 
         {/* Conversation list */}
         <div className="space-y-2">
@@ -65,14 +65,19 @@ export function ConversationList() {
                 key={conv.id}
                 onClick={() => selectConversation(conv.id)}
                 className={`
-                  flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all
+                  flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all relative
                   ${
                     isActive
-                      ? 'bg-blue-50 ring-1 ring-blue-200'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-[#E8F5E9]'
+                      : 'hover:bg-gray-100'
                   }
                 `}
               >
+                {/* Active indicator */}
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-green-500 rounded-r-full" />
+                )}
+
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">
                   {otherUser?.avatar ? (
@@ -95,7 +100,7 @@ export function ConversationList() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center">
-                    <p className="font-medium truncate">
+                    <p className="font-medium text-sm truncate">
                       {otherUser?.name || 'Unknown'}
                     </p>
                     {conv.lastMessage && (
@@ -105,15 +110,15 @@ export function ConversationList() {
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-gray-500 truncate">
-                      {conv.lastMessage?.content || 'No messages yet'}
-                    </p>
-                    {unread > 0 && (
-                      <span className="bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        {unread}
-                      </span>
-                    )}
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      {unread > 0 && (
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0" />
+                      )}
+                      <p className={`text-sm truncate ${unread > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+                        {conv.lastMessage?.content || 'No messages yet'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
