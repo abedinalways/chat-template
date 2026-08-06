@@ -5,46 +5,37 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Paperclip, Send, X } from 'lucide-react';
+import { Paperclip, X } from 'lucide-react';
 import { useChat } from './ChatProvider';
-import { useDebounce } from '@/hooks/useDebounce';
 
 export function MessageInput() {
   const { sendMessage, activeConversationId, emitTyping, setTyping } = useChat();
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Debounce text changes to avoid spamming typing events
-  const debouncedText = useDebounce(text, 800);
+  // Focus input when conversation changes
+  useEffect(() => {
+    if (activeConversationId && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [activeConversationId]);
+
+  // Local handlers to avoid context dependency issues
+  const handleTyping = useCallback((isTyping: boolean) => {
+    if (activeConversationId) {
+      emitTyping(activeConversationId, isTyping);
+      setTyping(activeConversationId, isTyping);
+    }
+  }, [activeConversationId, emitTyping, setTyping]);
 
   // Emit typing indicator when text changes
   useEffect(() => {
     if (!activeConversationId) return;
-
-    const isTyping = debouncedText.length > 0 || attachments.length > 0;
-    emitTyping(activeConversationId, isTyping);
-    setTyping(activeConversationId, isTyping);
-
-    // Cleanup: emit stopped typing when component unmounts or conversation changes
-    return () => {
-      if (activeConversationId) {
-        emitTyping(activeConversationId, false);
-        setTyping(activeConversationId, false);
-      }
-    };
-  }, [debouncedText, attachments.length, activeConversationId, emitTyping, setTyping]);
-
-  // Auto-resize textarea based on content
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-  }, [text]);
+    handleTyping(text.length > 0 || attachments.length > 0);
+  }, [text, activeConversationId, handleTyping]);
 
   // Handle sending a message
   const handleSend = useCallback(async () => {
@@ -56,11 +47,6 @@ export function MessageInput() {
       await sendMessage(trimmedText);
       setText('');
       setAttachments([]);
-      
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
     } catch (error) {
       console.error('[MessageInput] Failed to send message:', error);
     } finally {
@@ -69,8 +55,8 @@ export function MessageInput() {
   }, [text, isSending, activeConversationId, sendMessage]);
 
   // Handle keyboard shortcuts
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleSend();
     }
@@ -95,7 +81,7 @@ export function MessageInput() {
   // Show placeholder when no conversation is selected
   if (!activeConversationId) {
     return (
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
+      <div className="p-4 border-t border-gray-200 bg-white">
         <div className="text-center text-gray-400 text-sm">
           Select a conversation to start messaging
         </div>
@@ -129,7 +115,19 @@ export function MessageInput() {
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-2">
+        {/* Camera icon */}
+        <button
+          type="button"
+          className="p-2 bg-gray-700 text-white hover:bg-gray-800 rounded-full transition-all flex-shrink-0"
+          title="Camera"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+
         {/* File attachment button */}
         <input
           ref={fileInputRef}
@@ -141,21 +139,21 @@ export function MessageInput() {
         />
         <label
           htmlFor="file-upload"
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-all"
+          className="p-2 bg-gray-700 text-white hover:bg-gray-800 rounded-full cursor-pointer transition-all flex-shrink-0"
           title="Attach files"
         >
           <Paperclip className="w-5 h-5" />
         </label>
 
-        {/* Message textarea */}
-        <textarea
-          ref={textareaRef}
+        {/* Message input */}
+        <input
+          ref={inputRef}
+          type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          className="flex-1 resize-none border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] max-h-[120px] text-sm"
-          rows={1}
+          placeholder="Type a new message.."
+          className="flex-1 min-w-0 border border-gray-300 rounded-full px-4 py-2 text-sm text-black bg-white placeholder-gray-400 h-10"
           disabled={isSending}
         />
 
@@ -164,28 +162,20 @@ export function MessageInput() {
           onClick={handleSend}
           disabled={!text.trim() || isSending}
           className={`
-            p-2 rounded-lg transition-all duration-200
+            p-2 rounded-full transition-all duration-200 flex-shrink-0
             ${
               text.trim() && !isSending
-                ? 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-transparent text-gray-600 hover:bg-gray-100'
+                : 'bg-transparent text-gray-400 cursor-not-allowed'
             }
           `}
           type="button"
           title="Send message"
         >
-          {isSending ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Send className="w-5 h-5" />
-          )}
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
         </button>
-      </div>
-
-      {/* Helper text */}
-      <div className="text-xs text-gray-400 mt-2">
-        Press <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono">Enter</kbd> to send,{' '}
-        <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono">Shift + Enter</kbd> for new line
       </div>
     </div>
   );
